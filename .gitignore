@@ -8,7 +8,7 @@ wandb/
 tensorboard/
 
 # notes ignore
-.notes/
+notes/
 
 # macOS
 .DS_Store
