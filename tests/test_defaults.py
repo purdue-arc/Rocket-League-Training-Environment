@@ -1,11 +1,11 @@
 def test_imports():
-  import carSoccer.config, mujoco, torch, tensordict
+  import carSoccer.config as cfg, mujoco, torch, tensordict
 
 def test_ball_config_defaults():
-  import carSoccer
-  cfg = carSoccer.config.BallConfig()
+  import carSoccer.config as cfg
+  config = cfg.BallConfig()
 
-  assert cfg.radius > 0
+  assert config.radius > 0
 
 def test_mujoco_steps():
   import mujoco
