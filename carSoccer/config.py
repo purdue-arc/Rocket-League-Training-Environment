@@ -125,9 +125,17 @@ class RandomizationConfig:
 
 @dataclass(frozen=True)
 class RewardConfig:
-  touch: float = 1.0                       # to a car each time it starts touching the ball
+  touch: float = 1.0                       # to a car for a fresh touch that actually gets the ball moving
   goal: float = 10.0                       # to every car of the team that scores
   conceded: float = 10.0                   # taken from every car of the team that concedes
+  approach: float = 0.01                   # per decision, per m/s of a car's own closing speed on the ball; assumed,
+  # kept small on purpose: dense shaping should nudge early exploration toward the ball, not out-earn an actual touch
+  ballToGoal: float = 0.01                 # per decision, per m/s the ball moves toward a team's attacking goal;
+  # same team-shared sign as goal/conceded (zero-sum between teams), assumed, kept small for the same reason
+  stallSpeed: float = 1.0                  # m/s; a fresh touch counts as useful only if the ball ends up moving
+  # faster than this right after - below it, the touch did nothing (a graze, or the ball pinned uselessly against a
+  # wall/corner with contact chattering on and off), so it is penalised instead of paid; assumed
+  stuckPenalty: float = 0.5                # taken from a car for a touch that was useless by the stallSpeed test
 
 @dataclass(frozen=True)
 class GameConfig:

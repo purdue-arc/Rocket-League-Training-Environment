@@ -58,12 +58,15 @@ class AgentModel(nn.Module):
     return ModelOut(dist=torch.distributions.Normal(mean, std), value=self.value(obs))
 
   @torch.no_grad()
-  def act(self, obs: TensorDict, deterministic: bool = True) -> Tensor:
-    """(B, 2) actions for playing, not training."""
+  def act(self, obs: TensorDict, deterministic: bool = True, stdScale: float = 1.0) -> Tensor:
+    """(B, 2) actions for playing, not training. stdScale multiplies the action std (opponent-pool calibrated
+    randomness: a factor drawn around 1.0 makes a frozen snapshot play a little sharper or a little noisier than it
+    did at checkpoint time, without deterministically making it stronger or weaker on average)."""
     mean = self.actionMean(self.actorInput(obs))
     if deterministic:
       return mean
-    return torch.distributions.Normal(mean, self.logStd.clamp(*self.spec.logStdRange).exp()).sample()
+    std = self.logStd.clamp(*self.spec.logStdRange).exp() * stdScale
+    return torch.distributions.Normal(mean, std).sample()
 
   def exportActor(self, path: str) -> None:
     """Deployment: normaliser + encoder + mean head as TorchScript, taking flattenObs(obs) (B, F) -> (B, 2) in [-1, 1]."""

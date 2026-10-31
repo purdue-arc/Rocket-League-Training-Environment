@@ -38,8 +38,11 @@ class PPO:
     self.optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr, eps=1e-5)
 
   def update(self, batch: TensorDict) -> dict[str, float]:
-    """One learning step on a full rollout (T, B): obs, action, logProb, value, advantage, return."""
+    """One learning step on a full rollout (T, B): obs, action, logProb, value, advantage, return. Rows with
+    trainable = False (an OpponentPool snapshot's cars, if any: see Collector.chooseOpponent) are dropped - their
+    actions weren't drawn from the live policy, so they'd corrupt the PPO ratio rather than train it."""
     cfg, flat = self.cfg, batch.reshape(-1)
+    flat = flat[flat["trainable"]]
     n = flat.batch_size[0]
     size = n // cfg.minibatches
     stats = {"policyLoss": 0.0, "valueLoss": 0.0, "entropy": 0.0, "kl": 0.0, "clipFrac": 0.0}

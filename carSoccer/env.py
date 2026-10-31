@@ -72,15 +72,16 @@ class SoccerEnv:
       events["done"] |= newlyDone
       events["truncated"] |= truncated & ~terminated & live
       maskedAssign(finalState, self.engine.state, newlyDone)
-      frozen |= newlyDone                    # nothing happens after the final whistle
+      frozen |= newlyDone
 
     kickoff = (events["goal"].any(-1) | events["ballOut"]) & ~events["done"]
     events["kickoff"] = kickoff | events["done"]
     events["finalState"] = finalState
     if self.obsBuilder is not None:
-      events["finalObs"] = self.obsBuilder.build(finalState, self.ctx).reshape(N, -1)   # (N, agents per world)
+      events["finalObs"] = self.obsBuilder.build(finalState, self.ctx).reshape(N, -1)
     reward = torch.zeros(N, 2 * P, device=self.device)
     if self.reward is not None:
+      events["state"] = self.engine.state.clone() 
       reward, events["rewardTerms"] = self.reward(events)
     self.startWorlds(events["done"], kickoff)
     return self.observe(self.engine.state), reward, events

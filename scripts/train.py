@@ -6,6 +6,10 @@ Run from the project root with the venv active:
   python scripts/train.py --resume runs/selfplay/latest.pt --iterations 600
 Then watch it play:
   mjpython scripts/watchMatch.py --policy runs/selfplay/latest.pt
+Watch progress live (if the tensorboard package is installed):
+  tensorboard --logdir runs/selfplay
+Stop it early, cleanly (also just Ctrl-C in this terminal):
+  python scripts/stop.py selfplay
 """
 import argparse
 from dataclasses import replace
