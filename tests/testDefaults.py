@@ -1,13 +1,13 @@
-def test_imports():
+def testImports():
   import carSoccer.config as cfg, mujoco, torch, tensordict
 
-def test_ball_config_defaults():
+def testBallConfigDefaults():
   import carSoccer.config as cfg
   config = cfg.BallConfig()
 
   assert config.radius > 0
 
-def test_mujoco_steps():
+def testMujocoSteps():
   import mujoco
   
   model = mujoco.MjModel.from_xml_string("<mujoco><worldbody/></mujoco>")

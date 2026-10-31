@@ -2,21 +2,21 @@ import math, carSoccer.config as cfg
 
 E_MIN = 0.25                               # lowest restitution the formula is checked for
 
-def shell_inertia(mass: float, radius: float) -> float:
+def shellInertia(mass: float, radius: float) -> float:
   """Moment of inertia of a thin hollow sphere about any axis through its centre. mass in kg and radius in meters."""  
   return (2.0 / 3.0) * mass * radius ** 2
 
-def contact_solref(e: float, sim: cfg.SimConfig) -> tuple[float, float]:
-  """Direct-form MuJoCo solref (-stiffness 1/s^2, -damping 1/s) for restitution e and sim.contact_duration in s."""
-  steps = sim.contact_duration / sim.timestep
-  if steps < sim.min_contact_steps:
-    raise ValueError(f"contact lasts {steps:.1f} timesteps, need at least {sim.min_contact_steps}")
+def contactSolref(e: float, sim: cfg.SimConfig, duration: float | None = None) -> tuple[float, float]:
+  """Direct-form MuJoCo solref (-stiffness 1/s^2, -damping 1/s) for restitution e and a contact lasting duration s (default sim.contactDuration)."""
+  duration = sim.contactDuration if duration is None else duration
+  steps = duration / sim.timestep
+  if steps < sim.minContactSteps:
+    raise ValueError(f"contact lasts {steps:.1f} timesteps, need at least {sim.minContactSteps}")
 
-  # finds our what dampner and spring work for making ball stay in contact for sim.contact_duration
-  # 
+  # finds our what dampner and spring work for making ball stay in contact for duration
 
-  zeta = damping_ratio(e)
-  w0 = math.pi / (sim.contact_duration * math.sqrt(1 - zeta ** 2))   # half a damped oscillation lasts contact_duration
+  zeta = dampingRatio(e)
+  w0 = math.pi / (duration * math.sqrt(1 - zeta ** 2))   # half a damped oscillation lasts duration
   
   return -w0 ** 2, -2 * zeta * w0
 
@@ -27,7 +27,7 @@ def restitution(zeta: float) -> float:
   
   return math.exp(-zeta / root * (math.pi - phi))
 
-def damping_ratio(e: float) -> float:
+def dampingRatio(e: float) -> float:
   """Converts a coefficient of restitution into MuJoCo's contact damping ratio, by bisection on restitution()."""
   if not (E_MIN <= e <= 1):
     raise ValueError(f"coefficient of restitution must be in [{E_MIN}, 1], got {e!r}")
@@ -46,22 +46,34 @@ def damping_ratio(e: float) -> float:
 
   return (low + high) / 2
 
-def ball_drop_xml(ball_cfg: cfg.BallConfig, sim: cfg.SimConfig, drop_height: float = 1.0) -> str:
-  """Builds the MJCF for a single ball above floor, used to test the contact calibration. drop_height is in meters. Returns MJCF XML string."""
-  stiffness, damping = contact_solref(ball_cfg.restitution_floor, sim)
-  inertia = shell_inertia(ball_cfg.mass, ball_cfg.radius)
+def ballDropXML(ballCfg: cfg.BallConfig, sim: cfg.SimConfig, dropHeight: float = 1.0) -> str:
+  """Builds the MJCF for a single ball above floor, used to test the contact calibration. dropHeight is in meters. Returns MJCF XML string."""
+  stiffness, damping = contactSolref(ballCfg.restitutionFloor, sim)
+  inertia = shellInertia(ballCfg.mass, ballCfg.radius)
 
   xmlStr = f"""
-<mujoco model="ball_drop">
+<mujoco model="ballDrop">
   <option timestep="{sim.timestep:.6g}" integrator="implicitfast"/>
   <worldbody>
     <geom name="floor" type="plane" size="5 5 0.1"/>
-    <body name="ball" pos="0 0 {drop_height:.6g}">
+    <body name="ball" pos="0 0 {dropHeight:.6g}">
       <freejoint/>
-      <inertial pos="0 0 0" mass="{ball_cfg.mass:.6g}" diaginertia="{inertia:.6g} {inertia:.6g} {inertia:.6g}"/>
-      <geom name="ball" type="sphere" size="{ball_cfg.radius:.6g}" solref="{stiffness:.6g} {damping:.6g}" priority="1"/>
+      <inertial pos="0 0 0" mass="{ballCfg.mass:.6g}" diaginertia="{inertia:.6g} {inertia:.6g} {inertia:.6g}"/>
+      <geom name="ball" type="sphere" size="{ballCfg.radius:.6g}" solref="{stiffness:.6g} {damping:.6g}" priority="1"/>
     </body>
   </worldbody>
 </mujoco>"""
 
   return xmlStr
+
+def ballBodyXML(ballCfg: cfg.BallConfig, height: float | None = None) -> str:
+  """MJCF body for the match ball at the centre spot. Its contacts come only from explicit <pair>s, so the geom collides with nothing on its own."""
+  inertia = shellInertia(ballCfg.mass, ballCfg.radius)
+  height = ballCfg.radius if height is None else height
+
+  return f"""
+    <body name="ball" pos="0 0 {height:.6g}">
+      <freejoint name="ball"/>
+      <inertial pos="0 0 0" mass="{ballCfg.mass:.6g}" diaginertia="{inertia:.6g} {inertia:.6g} {inertia:.6g}"/>
+      <geom name="ball" type="sphere" size="{ballCfg.radius:.6g}" contype="0" conaffinity="0" material="ball"/>
+    </body>"""

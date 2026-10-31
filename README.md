@@ -60,3 +60,39 @@ pytest -v
 1. `pip install -e ".[dev]"`
 2. `pip freeze --exclude-editable > requirements.lock.txt`
 3. Commit `requirements.lock.txt`.
+
+## Run
+
+Watch a 3v3 match in the MuJoCo viewer (on macOS the viewer must be started with `mjpython`, which the venv provides):
+
+```bash
+mjpython scripts/watchMatch.py                    # random drivers
+mjpython scripts/watchMatch.py --policy chase     # scripted ball-chasing bots
+mjpython scripts/watchMatch.py --scatter 1.0      # random kickoff positions
+mjpython scripts/watchMatch.py --randomize --noise   # new car variant and physics each match, noisy sensors
+```
+
+Running it with plain `python` (or the editor's Run button) relaunches it under `mjpython` automatically.
+
+Train a policy (PPO, 3v3 self-play, one shared network for every car) and watch or evaluate it:
+
+```bash
+python scripts/train.py                                    # runs/selfplay: progress.csv, ckpt*.pt, latest.pt
+python scripts/train.py --resume runs/selfplay/latest.pt --iterations 600
+mjpython scripts/watchMatch.py --policy runs/selfplay/latest.pt
+mjpython scripts/watchMatch.py --policy runs/selfplay/latest.pt --opponent chase
+python scripts/evaluate.py runs/selfplay/latest.pt --opponent random
+```
+
+The reward pays a car for each new ball touch and every car of a team for a goal (minus the same for conceding);
+weights are in `RewardConfig`. Each training line reports touches per car-minute, goals per world-minute and how fast
+cars close on the ball, so you can see play improving before goals appear.
+
+Other scripts:
+
+```bash
+python scripts/bench.py --worlds 256 --threads 1 4 9    # env steps per second (--realistic adds randomisation and noise)
+python scripts/restitutionSweep.py                      # the M0 contact experiments
+```
+
+Tests: `python -m pytest -v` from the repo root. Test files are named `test*.py` (camelCase, configured in `pyproject.toml`).
